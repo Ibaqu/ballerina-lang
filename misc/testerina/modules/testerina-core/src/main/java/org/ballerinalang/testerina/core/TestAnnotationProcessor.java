@@ -24,12 +24,18 @@ import org.ballerinalang.model.tree.FunctionNode;
 import org.ballerinalang.model.tree.PackageNode;
 import org.ballerinalang.testerina.core.entity.Test;
 import org.ballerinalang.testerina.core.entity.TestSuite;
+import org.ballerinalang.util.diagnostic.Diagnostic;
 import org.ballerinalang.util.diagnostic.DiagnosticLog;
+import org.wso2.ballerinalang.compiler.PackageLoader;
 import org.wso2.ballerinalang.compiler.tree.BLangFunction;
 import org.wso2.ballerinalang.compiler.tree.BLangPackage;
+import org.wso2.ballerinalang.compiler.tree.BLangSimpleVariable;
 import org.wso2.ballerinalang.compiler.tree.BLangTestablePackage;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangListConstructorExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangRecordLiteral;
+import org.wso2.ballerinalang.compiler.tree.types.BLangType;
+import org.wso2.ballerinalang.compiler.util.CompilerContext;
+import org.wso2.ballerinalang.compiler.util.diagnotic.BDiagnosticSource;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -63,6 +69,11 @@ public class TestAnnotationProcessor extends AbstractCompilerPlugin {
     private TesterinaRegistry registry = TesterinaRegistry.getInstance();
     private TestSuite suite;
     private boolean enabled = true;
+    private CompilerContext compilerContext;
+    private PackageLoader packageLoader;
+    private DiagnosticLog diagnosticLog;
+    private BLangPackage bLangPackage;
+
     /**
      * this property is used as a work-around to initialize test suites only once for a package as Compiler
      * Annotation currently emits package import events too to the process method.
@@ -70,9 +81,25 @@ public class TestAnnotationProcessor extends AbstractCompilerPlugin {
 
     @Override
     public void init(DiagnosticLog diagnosticLog) {
+        this.diagnosticLog = diagnosticLog;
         if (registry.getInstance().isTestSuitesCompiled()) {
             enabled = false;
         }
+    }
+
+    @Override
+    public void setCompilerContext(CompilerContext context) {
+        this.compilerContext = context;
+        setPackageLoader();
+    }
+
+    public void setPackageLoader() {
+        this.packageLoader = PackageLoader.getInstance(this.compilerContext);
+    }
+
+    public void setBlangPackage(AnnotationAttachmentNode attachmentNode) {
+        Diagnostic.DiagnosticSource source =  attachmentNode.getExpression().getPosition().getSource();
+        this.bLangPackage = packageLoader.loadPackage(((BDiagnosticSource) source).pkgID);
     }
 
     @Override
@@ -122,10 +149,59 @@ public class TestAnnotationProcessor extends AbstractCompilerPlugin {
                         }
                     });
 
+                    if (this.bLangPackage == null) {
+                        setBlangPackage(attachmentNode);
+                    }
+
+                    // Get list of BLang Functions
+                    List<BLangFunction> bLangFunctions = bLangPackage.getFunctions();
+
+                    // For each function, look for the function_to_mock
+                    for (BLangFunction bLangFunction: bLangFunctions) {
+                        if (bLangFunction.getName().toString().equals(vals[1])) {
+
+                            List<BLangSimpleVariable> requiredParams = ((BLangFunction) functionNode).requiredParams;
+                            BLangType returnTypeNode = ((BLangFunction) functionNode).returnTypeNode;
+
+                            // Check for parameter size
+                            if (bLangFunction.requiredParams.size() == requiredParams.size()) {
+                                //Check if the parameters are empty
+                                if (!bLangFunction.requiredParams.isEmpty() && !requiredParams.isEmpty()) {
+                                    // Check same requiredParams index for both functions. Type must be the same
+                                    for (int i = 0; i < bLangFunction.requiredParams.size(); i++) {
+                                        if (bLangFunction.requiredParams.get(i).type != requiredParams.get(i).type) {
+                                            diagnosticLog.logDiagnostic(Diagnostic.Kind.ERROR,
+                                                    attachmentNode.getExpression().getPosition(),
+                                                    "Parameter types do not match");
+                                            return;
+                                        }
+                                    }
+                                }
+                            } else {
+                                diagnosticLog.logDiagnostic(Diagnostic.Kind.ERROR,
+                                        attachmentNode.getExpression().getPosition(),
+                                        "Number of parameters do not match");
+                                return;
+                            }
+
+                            //Check return type of both functions
+                            if (bLangFunction.returnTypeNode.type != returnTypeNode.type) {
+                                diagnosticLog.logDiagnostic(Diagnostic.Kind.ERROR,
+                                        attachmentNode.getExpression().getPosition(),
+                                        "Return types do not match");
+                                return;
+                            }
+
+                        }
+
+                    }
+
+
                     //Creating a bLangTestablePackage to add a mock function
                     BLangTestablePackage bLangTestablePackage =
                             (BLangTestablePackage) ((BLangFunction) functionNode).parent;
-                    bLangTestablePackage.addMockFunction(vals[0] + MOCK_ANNOTATION_DELIMITER + vals[1], functionName);
+                    bLangTestablePackage.addMockFunction(vals[0] + MOCK_ANNOTATION_DELIMITER + vals[1],
+                            functionName);
 
                 }
             } else if (TEST_ANNOTATION_NAME.equals(annotationName)) {
