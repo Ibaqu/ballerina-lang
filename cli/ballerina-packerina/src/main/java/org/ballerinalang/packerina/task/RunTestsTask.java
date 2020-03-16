@@ -34,6 +34,7 @@ import org.ballerinalang.testerina.core.TesterinaRegistry;
 import org.ballerinalang.tool.LauncherUtils;
 import org.ballerinalang.tool.util.BFileUtil;
 import org.wso2.ballerinalang.compiler.tree.BLangPackage;
+import org.wso2.ballerinalang.compiler.util.FileUtils;
 import org.wso2.ballerinalang.util.Lists;
 import org.wso2.ballerinalang.util.RepoUtils;
 
@@ -45,7 +46,9 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.io.Writer;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -55,6 +58,7 @@ import java.util.HashSet;
 import java.util.List;
 
 import static org.ballerinalang.test.runtime.util.TesterinaConstants.TEST_RESULTS_FILE;
+import static org.ballerinalang.test.runtime.util.TesterinaConstants.TEST_RESULTS_JSON;
 import static org.ballerinalang.test.runtime.util.TesterinaConstants.TEST_RUNTIME_JAR_PREFIX;
 import static org.ballerinalang.tool.LauncherUtils.createLauncherException;
 import static org.wso2.ballerinalang.compiler.util.ProjectDirConstants.BALLERINA_HOME;
@@ -222,16 +226,17 @@ public class RunTestsTask implements Task {
     }
 
     /**
-     * Write the test report content into a json file.
+     * Write the test report content into a json file and html file
      *
      * @param out PrintStream object to print messages to console
      * @param testReport Data that are parsed to the json
      */
-    private void writeReportToJson(PrintStream out, TestReport testReport, Path jsonPath) {
+    private void writeReportToJson(PrintStream out, TestReport testReport, Path reportPath) {
         out.println();
         out.println("Generating Test Report");
-        File jsonFile = new File(jsonPath.resolve(TEST_RESULTS_FILE).toString());
-        try (Writer writer = new OutputStreamWriter(new FileOutputStream(jsonFile), StandardCharsets.UTF_8)) {
+        File htmlFile = new File(reportPath.resolve(TEST_RESULTS_FILE).toString());
+        File jsonFile = new File(reportPath.resolve(TEST_RESULTS_JSON).toString());
+        try (Writer writer = new OutputStreamWriter(new FileOutputStream(htmlFile), StandardCharsets.UTF_8)) {
             Gson gson;
             if (this.coverage) {
                  gson = new Gson();
@@ -239,8 +244,15 @@ public class RunTestsTask implements Task {
                 gson = new GsonBuilder().setExclusionStrategies(new TestReport.ReportExclusionStrategy()).create();
             }
             String json = gson.toJson(testReport);
-            writer.write(new String(json.getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8));
-            out.println("\t" + Paths.get("").toAbsolutePath().relativize(jsonFile.toPath()));
+            Path resourceDirectory = Paths.get("src", "main", "resources");
+            //String htmlString = new String(Files.readAllBytes(Paths.get("./testerina_report_template/testerina_results.html"))); //Doesnt work
+            String htmlString = "<html>\n" +
+                    "    <script type=\"application/json\" id=\"jsonReport\"> $jsonData </script>\n" +
+                    "</html>";
+            htmlString = htmlString.replace("$jsonData", json);
+
+            writer.write(new String(htmlString.getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8));
+            out.println("\t" + Paths.get("").toAbsolutePath().relativize(htmlFile.toPath()));
         } catch (IOException e) {
             throw LauncherUtils.createLauncherException("couldn't read data from the Json file : " + e.toString());
         }
