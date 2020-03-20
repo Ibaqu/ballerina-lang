@@ -144,8 +144,8 @@ public class TestAnnotationProcessor extends AbstractCompilerPlugin {
                 // TODO: when default values are supported in annotation struct we can remove this
                 vals[0] = packageName;
                 if (attachmentNode.getExpression() instanceof BLangRecordLiteral) {
-                    List<RecordLiteralNode.RecordField> attributes = ((BLangRecordLiteral) attachmentNode
-                            .getExpression()).getFields();
+                    List<RecordLiteralNode.RecordField> attributes = ((BLangRecordLiteral) attachmentNode.getExpression()).getFields();
+
                     attributes.forEach(field -> {
                         String name;
                         BLangExpression valueExpr;
@@ -164,13 +164,26 @@ public class TestAnnotationProcessor extends AbstractCompilerPlugin {
 
                         String value = valueExpr.toString();
 
-                        if (MODULE.equals(name)) {
-                            value = formatPackageName(value); // Formats the single module to fully qualified name
-                            vals[0] = value;
-                        } else if (FUNCTION.equals(name)) {
-                            vals[1] = value;
+                        // Make an explicit check for the annotationName
+                        // Each annotation key is dealt with one at a time per annotation so both checks must be done
+                        if (!name.equals(MODULE) && !name.equals(FUNCTION)) {
+                            diagnosticLog.logDiagnostic(Diagnostic.Kind.ERROR, attachmentNode.getPosition(),
+                                    "invalid annotation key : " + name);
+                        } else {
+                            if (MODULE.equals(name)) {
+                                value = formatPackageName(value); // Formats the single module to fully qualified name
+                                vals[0] = value;
+                            } else if (FUNCTION.equals(name)) {
+                                vals[1] = value;
+                            }
                         }
                     });
+
+                    // This happens only if 'moduleName' or 'functionName' is not the annotation
+                    // If this is not there, it will result in a bad sad error with a nullpointer
+                    if (vals[0] == null || vals[1] == null) {
+                        break;
+                    }
                     
                     // Check if Function in annotation is empty
                     if (vals[1].isEmpty()) {
