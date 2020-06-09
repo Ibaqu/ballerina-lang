@@ -14,6 +14,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import ballerina/java;
+
 # Starts all the services defined in the module specified in the 'moduleName' argument.
 #
 # + moduleName - Name of the module
@@ -38,3 +40,13 @@ public function startServiceSkeleton(string moduleName, string openApiFilePath) 
 #
 # + moduleName - Name of the module
 public function stopServiceSkeleton(string moduleName) = external;
+
+
+# Mock Handler
+# Acceps a mock Function object with/without arguments
+# + mockFunction - Mock Function object
+# + return - The relevant data type
+# args - Arguements (any or anydata and what is the java equivalent)
+public function mockHandler(MockFunction mockFunction) returns any|() = @java:Method {
+    class : "org.ballerinalang.testerina.natives.test.MockHandler"
+} external;

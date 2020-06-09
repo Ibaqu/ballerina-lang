@@ -1,3 +1,14 @@
 [project]
 org-name = "ballerina"
 version = "0.0.0"
+
+[dependencies]
+
+[platform]
+target = "java8"
+
+    [[platform.libraries]]
+        artifactId = "mock"
+        version = "1.2.5-SNAPSHOT"
+        path = "/misc/testerina/modules/testerina-core/build/libs/testerina-core-1.2.5-SNAPSHOT.jar"
+        groupId = "ballerina"
