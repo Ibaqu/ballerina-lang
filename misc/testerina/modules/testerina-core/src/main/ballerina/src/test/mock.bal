@@ -15,6 +15,7 @@
 // under the License.
 
 import ballerina/java;
+import ballerina/io;
 
 # Object mocking constants
 
@@ -77,6 +78,12 @@ public function prepare(object {} mockObj) returns MockObj {
     return obj;
 }
 
+public function when(MockFunction mockFunctionObj) returns FunctionCase {
+    io:println("[test] (when) Creating new Function case obj");
+    FunctionCase mockCase = new FunctionCase(mockFunctionObj);
+    return mockCase;
+}
+
 # Initial mock object created to expose functions to user to regster cases
 public type MockObj object {
     object {} prepareObj;
@@ -121,6 +128,43 @@ public type MockObj object {
         return mockObjCase;
     }
 };
+
+
+public type MockFunction object {
+    string mockFunction = "";
+    string caseId = "";
+};
+
+
+public type FunctionCase object {
+    string mockFunction = "";
+    MockFunction mockFunctionObj;
+    anydata|error argList = [];
+    any|error returnVal = ();
+
+    public function __init(MockFunction mockFunctionObj) {
+        self.mockFunctionObj = mockFunctionObj;
+    }
+
+    // Sets the Mock Function to be called
+    public function call(string mockFunction) {
+        io:println("[test:FunctionCase] (call) Setting mock function : ", mockFunction);
+        self.mockFunction = mockFunction;
+
+        io:println("[test:functionCase] (call) Calling ext function : ");
+        callExt(self);
+    }
+
+    // Sets the return value
+    public function setReturn(any|error retVal) {
+        io:println("[test:FunctionCase] (thenReturn)");
+        self.returnVal = retVal;  // Have a check if mockFunctionObj exists
+
+        setReturnExt(self);
+    }
+
+};
+
 
 # Represents a single case of a mock object
 #
@@ -217,6 +261,21 @@ public  type Case object {
 function mockExt(typedesc<object {}> T, object {} obj) returns object{}|Error = @java:Method {
     name: "mock",
     class: "org.ballerinalang.testerina.natives.test.Mock"
+} external;
+
+function callExt(object{} case) = @java:Method {
+    name : "call",
+    class : "org.ballerinalang.testerina.natives.test.FunctionMock"
+} external;
+
+function setReturnExt(object{} case) = @java:Method {
+    name : "setReturn",
+    class : "org.ballerinalang.testerina.natives.test.FunctionMock"
+} external;
+
+public function mockHandler(MockFunction mockFunction) returns any|() = @java:Method {
+    name : "mockHandler",
+    class : "org.ballerinalang.testerina.natives.test.FunctionMock"
 } external;
 
 # Inter-op to register the return value

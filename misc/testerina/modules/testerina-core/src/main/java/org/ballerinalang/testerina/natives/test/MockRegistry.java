@@ -67,7 +67,7 @@ public class MockRegistry {
      */
     public void registerCase(ObjectValue mockObject, String functionName, ArrayValue argsList, Object returnVal) {
         String caseId = constructCaseId(mockObject, functionName, argsList);
-        casesMap.put(caseId, returnVal);
+        casesMap.put(caseId, returnVal); // Return val should be the mock function to call, hash should be the mock object
     }
 
     private String constructCaseId(ObjectValue mockObject, String functionName, ArrayValue argsList) {
@@ -121,5 +121,10 @@ public class MockRegistry {
      */
     public boolean hasHitCount(String caseId) {
         return memberFuncHitsMap.containsKey(caseId);
+    }
+
+
+    public Object getCase(String caseId) {
+        return casesMap.get(caseId);
     }
 }
