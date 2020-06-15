@@ -31,6 +31,7 @@ import org.wso2.ballerinalang.compiler.semantics.model.types.BType;
 import org.wso2.ballerinalang.compiler.tree.BLangFunction;
 import org.wso2.ballerinalang.compiler.tree.BLangFunctionBody;
 import org.wso2.ballerinalang.compiler.tree.BLangIdentifier;
+import org.wso2.ballerinalang.compiler.tree.BLangImportPackage;
 import org.wso2.ballerinalang.compiler.tree.BLangPackage;
 import org.wso2.ballerinalang.compiler.tree.BLangSimpleVariable;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangExpression;
@@ -59,12 +60,9 @@ public class MockDesugar {
 
     private final SymbolTable symTable;
     private final SymbolResolver symResolver;
-    private final Names names;
-    private final Types types;
-    private final Desugar desugar;
-    private final SymbolEnter symbolEnter;
     private BLangPackage bLangPackage;
     private BLangFunction originalFunction;
+    private BSymbol packageFunction;
 
     private static final CompilerContext.Key<MockDesugar> MOCK_DESUGAR_KEY = new CompilerContext.Key<>();
 
@@ -80,10 +78,6 @@ public class MockDesugar {
         context.put(MOCK_DESUGAR_KEY, this);
         this.symTable = SymbolTable.getInstance(context);
         this.symResolver = SymbolResolver.getInstance(context);
-        this.names = Names.getInstance(context);
-        this.types = Types.getInstance(context);
-        this.desugar = Desugar.getInstance(context);
-        this.symbolEnter = SymbolEnter.getInstance(context);
     }
 
     public void generateMockFunctions(BLangPackage pkgNode) {
@@ -97,15 +91,18 @@ public class MockDesugar {
         Set<String> mockFunctionSet = mockFunctionMap.keySet();
 
         for (String function: mockFunctionSet) {
-            if (!function.contains("#")) { // Check added to skip desugaring for previous implementation mock functions
-                pkgNode.getTestablePkg().functions.add(generateMockFunction(function));
-            }
+            pkgNode.getTestablePkg().functions.add(generateMockFunction(function));
         }
     }
 
     private BLangFunction generateMockFunction(String functionName) {
         // Get the orginal function from the pkgNode function list for reference
-        this.originalFunction = getOriginalFunction(functionName);
+
+        if (functionName.contains(":")) {
+            this.packageFunction = getPackageFunction(functionName);
+        } else {
+            this.originalFunction = getOriginalFunction(functionName);
+        }
 
         // Set the function name to $MOCK_<functionName>
         functionName = "$MOCK_" + functionName;
@@ -129,6 +126,24 @@ public class MockDesugar {
             }
         }
         return null;
+    }
+
+    private BSymbol getPackageFunction(String functionName) {
+        String pkg = functionName.split(":")[0];
+        String name = functionName.split(":")[1];
+        List<BLangImportPackage> importList = bLangPackage.getImports();
+
+        // Go through the list of imports and look for the relevant package
+        for (BLangImportPackage importPackage : importList) {
+            if (importPackage.alias.getValue().equals(pkg)) {
+                BSymbol fnSymbol = importPackage.symbol.scope.lookup(new Name(name)).symbol;
+                BType type = fnSymbol.getType();
+                return fnSymbol;
+            }
+        }
+
+        return null;
+
     }
 
     private List<BLangSimpleVariable> generateRequiredParams() {
