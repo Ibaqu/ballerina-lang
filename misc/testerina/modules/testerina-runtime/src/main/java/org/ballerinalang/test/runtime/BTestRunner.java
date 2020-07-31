@@ -398,8 +398,7 @@ public class BTestRunner {
             // If the test function is skipped lets add it to the failed test list
             failedOrSkippedTests.add(test.getTestName());
             // report the test result
-            functionResult = new TesterinaResult(test.getTestName(), false, shouldSkip.get(),
-                                                 formatErrorMessage(e));
+            functionResult = new TesterinaResult(test.getTestName(), false, shouldSkip.get(), formatErrorMessage(e));
             tReport.addFunctionResult(packageName, functionResult);
         }
     }
