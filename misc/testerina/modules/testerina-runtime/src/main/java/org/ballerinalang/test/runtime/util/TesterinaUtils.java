@@ -77,6 +77,7 @@ public class TesterinaUtils {
             }
         } catch (BallerinaException e) {
             errStream.println("error: " + e.getMessage());
+            RuntimeUtils.silentlyLogBadSad(e);
             throw e;
         } catch (Throwable e) {
             RuntimeUtils.silentlyLogBadSad(e);
