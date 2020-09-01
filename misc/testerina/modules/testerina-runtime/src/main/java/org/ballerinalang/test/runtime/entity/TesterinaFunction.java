@@ -106,9 +106,13 @@ public class TesterinaFunction {
                     return method.invoke(null, objects);
                 } catch (InvocationTargetException e) {
                     //throw new BallerinaException(e);
-                    return e.getTargetException();
+                    System.out.println("[RunOnScehdule] Exception : " + e.toString()); //method.invoke happens to
+                    // return an invocation target exception, which internally stems from a NullPointer.
+                    return e.getTargetException(); //Check what are the other
                 } catch (IllegalAccessException e) {
                     throw new BallerinaException("Error while invoking function '" + funcName + "'", e);
+                } catch (IllegalArgumentException e) {
+                    throw new BallerinaException("Illegal Arguemnts maybe? " + e);
                 }
             };
             final FutureValue out = scheduler.schedule(params, func, null, null, null, BTypes.typeAny,

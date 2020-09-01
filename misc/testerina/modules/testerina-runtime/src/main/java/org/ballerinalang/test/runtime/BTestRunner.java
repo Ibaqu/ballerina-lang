@@ -302,6 +302,7 @@ public class BTestRunner {
         suite.getBeforeSuiteFunctionNames().forEach(test -> {
             String errorMsg;
             try {
+                System.out.println("[BTestRunner] Executing beforeFunction : " + test.toString());
                 invokeTestFunction(suite, test, classLoader, scheduler);
             } catch (Throwable e) {
                 shouldSkip.set(true);
