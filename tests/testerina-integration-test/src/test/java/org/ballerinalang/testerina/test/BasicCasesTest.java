@@ -52,7 +52,7 @@ public class BasicCasesTest extends BaseTestCase {
         LogLeecher clientLeecher = new LogLeecher(msg);
         balClient.runMain("test", new String[]{"--disable-groups", "p1", "assertions", "--user.name=waruna"}, null,
                 new String[]{}, new LogLeecher[]{clientLeecher}, projectPath);
-        clientLeecher.waitForText(600000);
+        clientLeecher.waitForText(1200000);
     }
 
     @Test()
