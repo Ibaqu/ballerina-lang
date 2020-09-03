@@ -50,9 +50,10 @@ public class ServiceValidator {
      * Validation with given resource and openApi contract file.
      * @param openApi       OpenApi Object
      * @param serviceNode   ServiceNode of ballerina service
+     * @param filters       Filters
      * @param kind          Message type
      * @param dLog          DiagnosticLog
-     * @throws OpenApiValidatorException
+     * @throws OpenApiValidatorException Open Api validator exception
      */
     public static void validateResource(OpenAPI openApi,
                                         ServiceNode serviceNode,

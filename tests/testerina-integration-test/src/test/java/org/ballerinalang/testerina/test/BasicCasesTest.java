@@ -46,13 +46,13 @@ public class BasicCasesTest extends BaseTestCase {
         clientLeecher.waitForText(20000);
     }
 
-    @Test(dependsOnMethods = "testAssertTrue", enabled = false)
+    @Test(dependsOnMethods = "testAssertTrue")
     public void testAssertions() throws BallerinaTestException {
         String msg = "87 passing";
         LogLeecher clientLeecher = new LogLeecher(msg);
         balClient.runMain("test", new String[]{"--disable-groups", "p1", "assertions", "--user.name=waruna"}, null,
                 new String[]{}, new LogLeecher[]{clientLeecher}, projectPath);
-        clientLeecher.waitForText(600000);
+        clientLeecher.waitForText(1200000);
     }
 
     @Test()
