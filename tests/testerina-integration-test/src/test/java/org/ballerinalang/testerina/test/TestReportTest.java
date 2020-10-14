@@ -18,6 +18,7 @@
 package org.ballerinalang.testerina.test;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -30,6 +31,7 @@ import org.testng.annotations.Test;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,6 +46,8 @@ public class TestReportTest extends BaseTestCase {
     private String projectPath;
     private Path resultsJsonPath;
     private JsonObject resultObj;
+
+    private static PrintStream outStream = System.out;
 
     @BeforeClass
     public void setup() throws BallerinaTestException {
@@ -167,6 +171,15 @@ public class TestReportTest extends BaseTestCase {
         // Verify module level coverage
         for (JsonElement element : resultObj.get("moduleCoverage").getAsJsonArray()) {
             JsonObject moduleObj = ((JsonObject) element);
+
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            String prettyPrint = gson.toJson(element);
+
+            outStream.println("---------");
+            outStream.println(prettyPrint);
+            outStream.println("---------");
+
+
             if ("math".equals(moduleObj.get("name").getAsString())) {
                 // Verify coverage of individual source file
                 for (JsonElement element1 :  moduleObj.get("sourceFiles").getAsJsonArray()) {
