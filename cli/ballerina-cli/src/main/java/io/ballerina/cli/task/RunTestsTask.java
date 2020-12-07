@@ -90,7 +90,9 @@ public class RunTestsTask implements Task {
     private boolean coverage;
     private boolean isSingleTestExecution;
     private boolean isRerunTestExecution;
+    private boolean isModuleTestExecution;
     private List<String> singleExecTests;
+    private String moduleExecTest;
     TestReport testReport;
 
     public RunTestsTask(PrintStream out, PrintStream err, String[] args) {
@@ -100,11 +102,16 @@ public class RunTestsTask implements Task {
     }
 
     public RunTestsTask(PrintStream out, PrintStream err, String[] args, boolean rerunTests, List<String> groupList,
-                        List<String> disableGroupList, List<String> testList) {
+                        List<String> disableGroupList, List<String> testList, String moduleName) {
         this.out = out;
         this.err = err;
         this.args = Lists.of(args);
         this.isSingleTestExecution = false;
+
+        if (moduleName != null) {
+            isModuleTestExecution = true;
+            moduleExecTest = moduleName;
+        }
 
         this.isRerunTestExecution = rerunTests;
 
@@ -168,6 +175,14 @@ public class RunTestsTask implements Task {
             Module module = project.currentPackage().module(moduleId);
             ModuleName moduleName = module.moduleName();
 
+            if (isModuleTestExecution) {
+                if (!moduleExecTest.equals(moduleName.moduleNamePart())) {
+                    continue;
+                } else {
+                    moduleExecTest = null;
+                }
+            }
+
             TestSuite suite = jBallerinaBackend.testSuite(module).orElse(null);
             Path moduleTestCachePath = testsCachePath.resolve(moduleName.toString());
 
@@ -219,6 +234,10 @@ public class RunTestsTask implements Task {
                     throw createLauncherException("error while generating test report", e);
                 }
             }
+        }
+
+        if (isModuleTestExecution && (moduleExecTest != null)) {
+            out.println("The following modules were not found in the modules directory : " + moduleExecTest);
         }
 
         try {

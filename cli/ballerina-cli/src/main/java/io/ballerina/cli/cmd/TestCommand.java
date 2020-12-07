@@ -38,6 +38,7 @@ import org.ballerinalang.tool.BLauncherCmd;
 import picocli.CommandLine;
 
 import java.io.PrintStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -58,6 +59,7 @@ public class TestCommand implements BLauncherCmd {
     private final PrintStream errStream;
     private Path projectPath;
     private boolean exitWhenFinish;
+    private String moduleName;
 
     public TestCommand() {
         this.projectPath = Paths.get(System.getProperty(ProjectConstants.USER_DIR));
@@ -141,8 +143,13 @@ public class TestCommand implements BLauncherCmd {
             args = argList.toArray(new String[0]);
             this.projectPath = Paths.get(System.getProperty(ProjectConstants.USER_DIR));
         } else {
-            args = argList.subList(1, argList.size()).toArray(new String[0]);
-            this.projectPath = Paths.get(argList.get(0));
+            if (Files.exists(this.projectPath.resolve(ProjectConstants.BALLERINA_TOML))) {
+                args = new String[0];
+                moduleName = argList.get(0);
+            } else {
+                args = argList.subList(1, argList.size()).toArray(new String[0]);
+                this.projectPath = Paths.get(argList.get(0));
+            }
         }
 
         String[] userArgs = LaunchUtils.getUserArgs(args, new HashMap<>());
@@ -199,7 +206,7 @@ public class TestCommand implements BLauncherCmd {
 //                .addTask(new CopyResourcesTask(), listGroups) // merged with CreateJarTask
                 .addTask(new ListTestGroupsTask(outStream), !listGroups) // list the available test groups
                 .addTask(new RunTestsTask(outStream, errStream, args, rerunTests, groupList, disableGroupList,
-                        testList), listGroups)
+                        testList, moduleName), listGroups)
                 .build();
 
         taskExecutor.executeTasks(project);
