@@ -4,6 +4,7 @@ module io.ballerina.testerina.runtime {
     requires io.ballerina.runtime;
     requires gson;
     requires org.jacoco.core;
+    requires org.jacoco.report;
     requires io.ballerina.lang;
     requires io.ballerina.tools.api;
 }
