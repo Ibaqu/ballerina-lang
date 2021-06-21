@@ -19,6 +19,7 @@
 package org.ballerinalang.central.client;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import okhttp3.Cache;
 import okhttp3.Call;
 import okhttp3.MediaType;
@@ -31,8 +32,12 @@ import okhttp3.ResponseBody;
 import org.ballerinalang.central.client.exceptions.CentralClientException;
 import org.ballerinalang.central.client.exceptions.NoPackageException;
 import org.ballerinalang.central.client.model.Error;
+import org.ballerinalang.central.client.model.ModuleResolutionRequestSchema;
+import org.ballerinalang.central.client.model.ModuleResolutionResponseSchema;
+import org.ballerinalang.central.client.model.Modules;
 import org.ballerinalang.central.client.model.Package;
 import org.ballerinalang.central.client.model.PackageSearchResult;
+import org.ballerinalang.central.client.model.ResolvedModules;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -41,11 +46,13 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.StringJoiner;
 
 import javax.net.ssl.HttpsURLConnection;
 
 import static org.ballerinalang.central.client.CentralClientConstants.ACCEPT;
 import static org.ballerinalang.central.client.CentralClientConstants.ACCEPT_ENCODING;
+import static org.ballerinalang.central.client.CentralClientConstants.APPLICATION_JSON;
 import static org.ballerinalang.central.client.CentralClientConstants.APPLICATION_OCTET_STREAM;
 import static org.ballerinalang.central.client.CentralClientConstants.AUTHORIZATION;
 import static org.ballerinalang.central.client.CentralClientConstants.BALLERINA_PLATFORM;
@@ -67,6 +74,7 @@ import static org.ballerinalang.central.client.Utils.isApplicationJsonContentTyp
 public class CentralAPIClient {
 
     private static final String PACKAGES = "packages";
+    private static final String RESOLVE_MODULES = "resolve-modules";
     private static final String ERR_CANNOT_FIND_PACKAGE = "error: could not connect to remote repository to find " +
             "package: ";
     private static final String ERR_CANNOT_FIND_VERSIONS = "error: could not connect to remote repository to find " +
@@ -484,6 +492,60 @@ public class CentralAPIClient {
         }
     }
 
+    public void resolvePackage(String org, String name, String version, String supportedPlatform,
+                               String ballerinaVersion) throws CentralClientException {
+        String url = this.baseUrl + "/" + PACKAGES + "/" + RESOLVE_MODULES;
+
+        Optional<ResponseBody> body = Optional.empty();
+        OkHttpClient client = this.getClient();
+
+        try {
+            ModuleResolutionRequestSchema schema = new ModuleResolutionRequestSchema();
+
+            if (name.contains(".")) {
+                List<String> possiblePkgNames = getPossiblePackageNames(name);
+
+                for (String possiblePkgName : possiblePkgNames) {
+                    Modules modules = new Modules(org, name, version);
+                    schema.addModulesItem(modules);
+                }
+
+            } else {
+                Modules modules = new Modules(org, name, version);
+                schema.addModulesItem(modules);
+            }
+
+            GsonBuilder gsonBuilder = new GsonBuilder();
+            Gson gson = gsonBuilder.create();
+            gson.toJson(schema);
+
+            MediaType JSON = MediaType.parse(APPLICATION_JSON);
+            RequestBody requestBody = RequestBody.create(JSON, gson.toJson(schema));
+
+            Request packageResolveReq = getNewRequest(supportedPlatform, ballerinaVersion)
+                    .post(requestBody)
+                    .url(url)
+                    .addHeader(ACCEPT_ENCODING, IDENTITY)
+                    .addHeader(ACCEPT, APPLICATION_OCTET_STREAM)
+                    .build();
+
+            Call packageResolveReqCall = client.newCall(packageResolveReq);
+            Response packageResolveResponse = packageResolveReqCall.execute();
+
+            if (packageResolveResponse.code() == HttpsURLConnection.HTTP_OK) {
+                ModuleResolutionResponseSchema res = new Gson().fromJson(body.get().string(),
+                    ModuleResolutionResponseSchema.class);
+
+                List<ResolvedModules> resolvedModules = res.getResolvedModules();
+
+            }
+
+        } catch (IOException e) {
+            throw new CentralClientException(e.getMessage());
+        }
+
+    }
+
     /**
      * Gets an new http client.
      *
@@ -537,5 +599,19 @@ public class CentralAPIClient {
 
     public void setAccessToken(String accessToken) {
         this.accessToken = accessToken;
+    }
+
+    private List<String> getPossiblePackageNames(String moduleName) {
+        String[] modNameParts = moduleName.split("\\.");
+        StringJoiner pkgNameBuilder = new StringJoiner(".");
+        List<String> possiblePkgNames = new ArrayList<>(modNameParts.length);
+
+
+        for (String modNamePart : modNameParts) {
+            pkgNameBuilder.add(modNamePart);
+            possiblePkgNames.add(pkgNameBuilder.toString());
+        }
+
+        return possiblePkgNames;
     }
 }
